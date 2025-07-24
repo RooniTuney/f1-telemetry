@@ -1,1 +1,8 @@
 streamlit
+scikit-learn
+numpy
+pandas
+datetime
+fastf1
+seaborn
+matplotlib
