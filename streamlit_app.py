@@ -109,7 +109,8 @@ option = st.sidebar.radio("Pages",["Home", "Compare Drivers", "Whole Races"])
 ############
 ####HOME####
 if option == "Home":
-    st.write("welcome to the easiest telemetry i can come up with")
+    st.title("Compare Drivers for Ryann TeeHee")
+    st.image("https://static01.nyt.com/images/2019/05/22/sports/21lauda2/a4e1a1b48f694cde9da4cce0791832c9-articleLarge.jpg?quality=75&auto=webp&disable=upscale")
 
 ####HOME####
 ############
@@ -123,57 +124,159 @@ if option == "Compare Drivers":
     format_selection = st.selectbox("Type of Race", ["Qualifying", "Race"])
     drivers_input = st.text_input("Drivers seperated by commas (e.g. Verstappen, Piastri)")
     
-    if st.button("generate"):
-            if year and race and drivers_input:
-                try:
-                    with st.spinner('please wait while your telemetry is loading'):
-                        if drivers_input:
-                            session = get_session(int(year), race, 'Q')
-                            session.load()
-                            driver_names = [name.strip() for name in drivers_input.split(",")]
-                            driver_codes = []
-                            for name in driver_names:
-                                code = driver_name_to_code.get(name)
-                                if code:
-                                    driver_codes.append(code)
+    if format_selection == "Qualifying":
+        if st.button("generate"):
+                if year and race and drivers_input:
+                    try:
+                        with st.spinner('please wait while your telemetry is loading'):
+                            if drivers_input:
+                                session = get_session(int(year), race, 'Q')
+                                session.load()
+                                driver_names = [name.strip() for name in drivers_input.split(",")]
+                                driver_codes = []
+                                for name in driver_names:
+                                    code = driver_name_to_code.get(name)
+                                    if code:
+                                        driver_codes.append(code)
+                                    else:
+                                        st.warning(f"Driver Not Recognized: {name}")
+                                if len(driver_codes) < 1:
+                                    st.warning("no valid drivers found")
                                 else:
-                                    st.warning(f"Driver Not Recognized: {name}")
-                            if len(driver_codes) < 1:
-                                st.warning("no valid drivers found")
-                            else:
-                                fig, ax = plt.subplots()
+                                    fig, ax = plt.subplots()
 
-                                st.title("Sector Times")
-                                st.caption("Times taken from the fastest lap regardless of when throughout qualifying the drivers fastest lap was. Track development could play a factor if one driver made it further than another.")
-                                # Create an empty list to hold each driver's data
-                    rows = []
+                                    st.title("Sector Times")
+                                    st.caption("Times taken from the fastest lap regardless of when throughout qualifying the drivers fastest lap was. Track development could play a factor if one driver made it further than another.")
+                                    # Create an empty list to hold each driver's data
+                        def format_time(timedelta_obj):
+                            total_seconds = timedelta_obj.total_seconds()
+                            minutes = int(total_seconds // 60)
+                            seconds = total_seconds % 60
+                            return f"{minutes}:{seconds:06.3f}"  # ensures leading zeros and 3 decimal places
 
-                    for code in driver_codes:
-                        lap_data = session.laps.pick_driver(code).pick_fastest()
-                        
-                        # Get sector times in seconds
-                        sector1_time = lap_data['Sector1Time'].total_seconds()
-                        sector2_time = lap_data['Sector2Time'].total_seconds()
-                        sector3_time = lap_data['Sector3Time'].total_seconds()
-                        lap_time = lap_data['LapTime'].total_seconds()
-                        
-                        # Add row to table
-                        rows.append({
-                            "Driver": code,
-                            "Sector 1": f"{sector1_time:.3f}s",
-                            "Sector 2": f"{sector2_time:.3f}s",
-                            "Sector 3": f"{sector3_time:.3f}s",
-                            "Lap Time": f"{lap_time:.3f}s"
-                        })
+                        rows = []
 
-                    # Convert to DataFrame
-                    df = pd.DataFrame(rows)
+                        for code in driver_codes:
+                            lap_data = session.laps.pick_driver(code).pick_fastest()
 
-                    # Display table
-                    st.dataframe(df)
+                            # Format each sector time
+                            sector1 = format_time(lap_data['Sector1Time'])
+                            sector2 = format_time(lap_data['Sector2Time'])
+                            sector3 = format_time(lap_data['Sector3Time'])
+                            lap_time = format_time(lap_data['LapTime'])
 
-                except Exception as e:
-                    st.write("")
+                            rows.append({
+                                "Driver": code,
+                                "Sector 1": sector1,
+                                "Sector 2": sector2,
+                                "Sector 3": sector3,
+                                "Lap Time": lap_time
+                            })
+
+                        df = pd.DataFrame(rows)
+                        st.dataframe(df)
+
+                        fig, ax = plt.subplots()
+
+                        st.title("Fastest Lap Comparison")
+                        st.caption("Times taken from the fastest lap regardless of when throughout qualifying the drivers fastest lap was. Track development could play a factor if one driver made it further than another.")
+                        for code in driver_codes:
+                            lap = session.laps.pick_driver(code).pick_fastest()
+
+                            tel = lap.get_telemetry()
+                            distance = tel['Distance']
+                            speed = tel['Speed']
+
+                            ax.plot(distance, speed, label=code)
+
+                        ax.set_title("Fastest Lap Comparison")
+                        ax.set_xlabel("Distance (m)")
+                        ax.set_ylabel("Speed (km/h)")
+                        ax.legend(title="Driver")
+                        plt.tight_layout()
+
+                        st.pyplot(fig)
+
+                    except Exception as e:
+                        st.write("")
+    if format_selection == "Race":
+        st.caption("Choosing individual laps coming soon")
+        if st.button("generate"):
+                if year and race and drivers_input:
+                    try:
+                        with st.spinner('please wait while your telemetry is loading'):
+                            if drivers_input:
+                                session = get_session(int(year), race, 'R')
+                                session.load()
+                                driver_names = [name.strip() for name in drivers_input.split(",")]
+                                driver_codes = []
+                                for name in driver_names:
+                                    code = driver_name_to_code.get(name)
+                                    if code:
+                                        driver_codes.append(code)
+                                    else:
+                                        st.warning(f"Driver Not Recognized: {name}")
+                                if len(driver_codes) < 1:
+                                    st.warning("no valid drivers found")
+                                else:
+                                    fig, ax = plt.subplots()
+
+                                    st.title("Sector Times")
+                                    st.caption("Times taken from the fastest lap regardless of when throughout qualifying the drivers fastest lap was. Track development could play a factor if one driver made it further than another.")
+                                    # Create an empty list to hold each driver's data
+                        def format_time(timedelta_obj):
+                            total_seconds = timedelta_obj.total_seconds()
+                            minutes = int(total_seconds // 60)
+                            seconds = total_seconds % 60
+                            return f"{minutes}:{seconds:06.3f}"  # ensures leading zeros and 3 decimal places
+
+                        rows = []
+
+                        for code in driver_codes:
+                            lap_data = session.laps.pick_driver(code).pick_fastest()
+
+                            # Format each sector time
+                            sector1 = format_time(lap_data['Sector1Time'])
+                            sector2 = format_time(lap_data['Sector2Time'])
+                            sector3 = format_time(lap_data['Sector3Time'])
+                            lap_time = format_time(lap_data['LapTime'])
+
+                            rows.append({
+                                "Driver": code,
+                                "Sector 1": sector1,
+                                "Sector 2": sector2,
+                                "Sector 3": sector3,
+                                "Lap Time": lap_time
+                            })
+
+                        df = pd.DataFrame(rows)
+                        st.dataframe(df)
+
+                        fig, ax = plt.subplots()
+
+                        st.title("Fastest Lap Comparison")
+                        st.caption("Times taken from the fastest lap regardless of when throughout qualifying the drivers fastest lap was. Track development could play a factor if one driver made it further than another.")
+                        for code in driver_codes:
+                            lap = session.laps.pick_driver(code).pick_fastest()
+
+                            tel = lap.get_telemetry()
+                            distance = tel['Distance']
+                            speed = tel['Speed']
+
+                            ax.plot(distance, speed, label=code)
+
+                        ax.set_title("Fastest Lap Comparison")
+                        ax.set_xlabel("Distance (m)")
+                        ax.set_ylabel("Speed (km/h)")
+                        ax.legend(title="Driver")
+                        plt.tight_layout()
+
+                        st.pyplot(fig)
+
+                    except Exception as e:
+                        st.write("")
+
+            
 
 
 ####COMPARE DRIVER####
